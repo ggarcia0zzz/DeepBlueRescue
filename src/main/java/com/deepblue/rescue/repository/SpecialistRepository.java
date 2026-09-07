@@ -15,7 +15,7 @@ public interface SpecialistRepository extends JpaRepository<Specialist, Long> {
         join s.expertiseAreas e
         where lower(e.name) = lower(:expertiseName)
           and s.active = true
-        order by s.name asc
+        order by s.firstName asc
         """)
     List<Specialist> findActiveByExpertise(@Param("expertiseName") String expertiseName);
 
