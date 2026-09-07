@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.junit.jupiter.Container;
@@ -33,6 +34,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 @Testcontainers
 @SpringBootTest
@@ -114,7 +116,6 @@ class PersistenceIntegrationTest {
                 .allSatisfy(caso -> assertThat(caso.getRescueCenter().getId()).isEqualTo(caribe.getId()));
     }
 
-   
     @Test
     void unCasoTieneUnAnimalAsociado() {
         RescueCenter caribe = rescueCenterRepository.save(
@@ -153,15 +154,12 @@ class PersistenceIntegrationTest {
                 null);
         tortuga.assignMedicalRecord(historia);
 
-        // Un único save en la raíz del grafo (RescueCase) basta:
-        // el cascade ALL se propaga RescueCase -> Animal -> MedicalRecord
         rescueCaseRepository.save(caso);
 
         assertThat(tortuga.getId()).isNotNull();
         assertThat(historia.getId()).isNotNull();
     }
 
-   
     @Test
     void unEspecialistaTieneVariasAreasDeExperticia() {
         Expertise trauma = expertiseRepository.findByNameIgnoreCase("Trauma").orElseThrow();
@@ -181,7 +179,6 @@ class PersistenceIntegrationTest {
                 .containsExactlyInAnyOrder("Trauma", "Rehabilitation");
     }
 
-   
     @Test
     void queryMethodDeCasosPorEstado() {
         RescueCenter caribe = rescueCenterRepository.save(
@@ -262,6 +259,7 @@ class PersistenceIntegrationTest {
                 .containsExactly("Elena", "Sofia");
     }
 
+
     @Test
     void seRegistranVariosTratamientosParaUnAnimal() {
         Animal tortuga = crearAnimalConCaso("RES-2026-301", "AN-2026-301");
@@ -325,9 +323,88 @@ class PersistenceIntegrationTest {
         assertThat(tratamientosEnRango.get(0).getDescription()).isEqualTo("Treatment 10-08");
     }
 
-    // ---------------------------------------------------------------
-    // Helpers de construcción de datos, comunes a los pasos 56-58
-    // ---------------------------------------------------------------
+
+    @Test
+    void violarUniqueDeAnimalCodeLanzaDataIntegrityViolationException() {
+        Animal primero = crearAnimalConCaso("RES-2026-401", "AN-100");
+        assertThat(primero.getId()).isNotNull();
+
+        RescueCenter otroCentro = rescueCenterRepository.save(
+                new RescueCenter("DB-CAR-DUP", "DeepBlue Caribbean Center", "Santa Marta"));
+        RescueCase otroCaso = new RescueCase("RES-2026-402", LocalDate.now(), "Santa Marta", RescueStatus.ADMITTED);
+        otroCentro.addCase(otroCaso);
+        rescueCaseRepository.saveAndFlush(otroCaso);
+
+        Animal duplicado = new Animal("AN-100", "Green Sea Turtle", "Chelonia mydas", AnimalSex.UNKNOWN);
+        otroCaso.assignAnimal(duplicado);
+
+        assertThatExceptionOfType(DataIntegrityViolationException.class)
+                .isThrownBy(() -> animalRepository.saveAndFlush(duplicado));
+    }
+
+    @Test
+    void violarForeignKeyDeRescueCenterLanzaDataIntegrityViolationException() {
+        long idDeCentroInexistente = 999_999L;
+
+        assertThatExceptionOfType(DataIntegrityViolationException.class)
+                .isThrownBy(() -> jdbcTemplate.update(
+                        """
+                        insert into rescue_cases
+                            (case_code, rescue_date, rescue_location, status, rescue_center_id)
+                        values (?, ?, ?, ?, ?)
+                        """,
+                        "RES-2026-403",
+                        LocalDate.now(),
+                        "Santa Marta",
+                        RescueStatus.ADMITTED.name(),
+                        idDeCentroInexistente));
+    }
+
+    @Test
+    void violarCheckDeStatusLanzaDataIntegrityViolationException() {
+        RescueCenter centro = rescueCenterRepository.save(
+                new RescueCenter("DB-CAR-CHK", "DeepBlue Caribbean Center", "Santa Marta"));
+
+        assertThatExceptionOfType(DataIntegrityViolationException.class)
+                .isThrownBy(() -> jdbcTemplate.update(
+                        """
+                        insert into rescue_cases
+                            (case_code, rescue_date, rescue_location, status, rescue_center_id)
+                        values (?, ?, ?, ?, ?)
+                        """,
+                        "RES-2026-404",
+                        LocalDate.now(),
+                        "Santa Marta",
+                        "ESTADO_INVENTADO",
+                        centro.getId()));
+    }
+
+    @Test
+    void trackingDeviceCodeSePersisteYEsOpcional() {
+        Animal sinDispositivo = crearAnimalConCaso("RES-2026-405", "AN-2026-405");
+        assertThat(sinDispositivo.getId()).isNotNull(); // nullable: no hace falta asignarlo
+
+        Animal conDispositivo = crearAnimalConCaso("RES-2026-406", "AN-2026-406");
+        conDispositivo.assignTrackingDevice("GPS-0001");
+        animalRepository.saveAndFlush(conDispositivo);
+
+        Animal recuperado = animalRepository.findById(conDispositivo.getId()).orElseThrow();
+        assertThat(recuperado.getTrackingDeviceCode()).isEqualTo("GPS-0001");
+    }
+
+    @Test
+    void trackingDeviceCodeEsUnicoCuandoNoEsNulo() {
+        Animal animal1 = crearAnimalConCaso("RES-2026-407", "AN-2026-407");
+        animal1.assignTrackingDevice("GPS-0002");
+        animalRepository.saveAndFlush(animal1);
+
+        Animal animal2 = crearAnimalConCaso("RES-2026-408", "AN-2026-408");
+        animal2.assignTrackingDevice("GPS-0002"); // mismo dispositivo: viola el UNIQUE de V3
+
+        assertThatExceptionOfType(DataIntegrityViolationException.class)
+                .isThrownBy(() -> animalRepository.saveAndFlush(animal2));
+    }
+
     private Animal crearAnimalConCaso(String caseCode, String animalCode) {
         RescueCenter centro = rescueCenterRepository.save(
                 new RescueCenter("DB-CAR-" + caseCode, "DeepBlue Caribbean Center", "Santa Marta"));
