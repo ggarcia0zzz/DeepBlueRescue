@@ -25,6 +25,9 @@ public class Animal {
     @Column(nullable = false)
     private AnimalSex sex;
 
+   @Column(name = "tracking_device_code")
+   private String trackingDeviceCode;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "rescue_case_id", unique = true)
     private RescueCase rescueCase;
@@ -64,6 +67,10 @@ public class Animal {
         this.rescueCase = rescueCase;
     }
 
+    public void assignTrackingDeviceCode(String trackingDeviceCode) {
+        this.trackingDeviceCode = trackingDeviceCode;
+    }
+
     public Long getId() {
         return id;
     }
@@ -82,6 +89,10 @@ public class Animal {
 
     public AnimalSex getSex() {
         return sex;
+    }
+
+    public String getTrackingDeviceCode() {
+        return trackingDeviceCode;
     }
 
     public RescueCase getRescueCase() {
