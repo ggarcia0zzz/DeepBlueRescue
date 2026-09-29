@@ -3,14 +3,14 @@ package com.deepblue.rescue.shared;
 import java.util.Locale;
 
 public class TextNormalizer {
-    private TextNormalizer(){
+    private TextNormalizer() {
     }
 
-    public static String code(String value){
+    public static String code(String value) {
         return value.trim().toUpperCase(Locale.ROOT);
     }
 
-    public static String option(String value){
+    public static String optionalCode(String value) {
         return (value == null || value.isBlank()) ? null : code(value);
     }
 
