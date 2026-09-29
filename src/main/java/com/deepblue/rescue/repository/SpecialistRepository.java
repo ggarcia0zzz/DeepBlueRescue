@@ -9,6 +9,10 @@ import java.util.List;
 
 public interface SpecialistRepository extends JpaRepository<Specialist, Long> {
 
+    boolean existsByEmail(String email);
+
+    boolean existsByProfessionalCode(String professionalCode);
+
     @Query("""
         select distinct s
         from Specialist s

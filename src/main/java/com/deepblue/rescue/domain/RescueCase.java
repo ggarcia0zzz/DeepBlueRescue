@@ -1,11 +1,15 @@
 package com.deepblue.rescue.domain;
 
 
+import com.deepblue.rescue.exception.InvalidStatusTransitionException;
 import jakarta.persistence.*;
+import jakarta.transaction.InvalidTransactionException;
+
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "rescue_cases")
+
 public class RescueCase {
 
     @Id
@@ -46,6 +50,17 @@ public class RescueCase {
         this.rescueDate = rescueDate;
         this.rescueLocation = rescueLocation;
         this.status = status;
+    }
+
+    public static RescueCase open(String caseCode, LocalDate rescueDate, String rescueLocation){
+        return new RescueCase(caseCode,rescueDate,rescueLocation,RescueStatus.ADMITTED);
+    }
+
+    public void changeStatus(RescueStatus newStatus) {
+        if (!status.canTransitionTo(newStatus)) {
+            throw new InvalidStatusTransitionException(status, newStatus);
+        }
+        this.status = newStatus;
     }
 
     public void assignAnimal(Animal animal) {
