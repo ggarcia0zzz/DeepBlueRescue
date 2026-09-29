@@ -13,6 +13,10 @@ public interface AnimalRepository extends JpaRepository<Animal, Long> {
 
     Optional<Animal> findByAnimalCode(String animalCode);
 
+    boolean existsByAnimalCode(String animalCode);
+
+    boolean existsByTrackingDeviceCode(String trackingDeviceCode);
+
     List<Animal> findByCommonNameContainingIgnoreCase(String commonName);
 
     List<Animal> findByRescueCase_Status(RescueStatus status);

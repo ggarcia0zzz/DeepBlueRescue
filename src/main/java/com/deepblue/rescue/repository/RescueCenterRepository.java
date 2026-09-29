@@ -8,5 +8,6 @@ import java.util.Optional;
 public interface RescueCenterRepository extends JpaRepository<RescueCenter, Long> {
 
     Optional<RescueCenter> findByCode(String code);
+    boolean existsByCode(String code);
 }
 

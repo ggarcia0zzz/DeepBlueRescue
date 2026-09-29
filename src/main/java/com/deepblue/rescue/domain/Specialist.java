@@ -56,6 +56,14 @@ public class Specialist {
         expertise.getSpecialists().add(this);
     }
 
+    public void activate(){
+        this.active=true;
+    }
+
+    public void deactivate(){
+        this.active=false;
+    }
+
     public Long getId() {
         return id;
     }
