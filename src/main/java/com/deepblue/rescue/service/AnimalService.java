@@ -20,4 +20,8 @@ public interface AnimalService {
     List<AnimalDto> findByStatusAndSpecialistExpertise(RescueStatus status, String expertiseName);
 
     AnimalDto assignTrackingDevice(Long animalId, @Valid AssignTrackingDeviceDto request);
+
+    boolean canReceiveTreatment(String animalCode);
+
+    
 }

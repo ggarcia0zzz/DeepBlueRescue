@@ -87,6 +87,18 @@ public class AnimalServiceImpl implements AnimalService {
         return animalMapper.toDto(animal);
     }
 
+    @Override
+    public boolean canReceiveTreatment(String animalCode) {
+        String code = TextNormalizer.code(animalCode);
+
+        Animal animal = animalRepository
+                .findByAnimalCode(code)
+                .orElseThrow(() -> new ResourceNotFoundException("Animal", code));
+
+        // Misma regla R-T2 de TreatmentServiceImpl: el caso debe seguir bajo cuidado
+        return animal.getRescueCase().getStatus().isUnderCare();
+    }
+
     private Animal findAnimal(Long id) {
         return animalRepository
                 .findById(id)

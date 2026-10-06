@@ -2,18 +2,23 @@ package com.deepblue.rescue.service;
 
 import com.deepblue.rescue.domain.Animal;
 import com.deepblue.rescue.domain.AnimalSex;
+import com.deepblue.rescue.domain.RescueCase;
+import com.deepblue.rescue.domain.RescueStatus;
 import com.deepblue.rescue.dto.AnimalDto;
 import com.deepblue.rescue.dto.AssignTrackingDeviceDto;
 import com.deepblue.rescue.exception.DuplicateResourceException;
 import com.deepblue.rescue.exception.ResourceNotFoundException;
 import com.deepblue.rescue.mapper.AnimalMapper;
 import com.deepblue.rescue.repository.AnimalRepository;
+import com.deepblue.rescue.service.AnimalServiceImpl;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDate;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -86,6 +91,42 @@ class AnimalServiceImplTest {
         when(animalRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.assignTrackingDevice(99L, new AssignTrackingDeviceDto("GPS-001")))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    // ---------- canReceiveTreatment ----------
+
+    @Test
+    void shouldBeEligibleWhenCaseIsUnderCare() {
+        Animal animal = turtle();
+        RescueCase rescueCase = RescueCase.open("RES-1", LocalDate.of(2026, 8, 20), "Bahia Concha");
+        rescueCase.assignAnimal(animal);
+
+        when(animalRepository.findByAnimalCode("AN-1")).thenReturn(Optional.of(animal));
+
+        assertThat(service.canReceiveTreatment("AN-1")).isTrue();
+    }
+
+    @Test
+    void shouldNotBeEligibleWhenCaseIsReleased() {
+        Animal animal = turtle();
+        RescueCase rescueCase = RescueCase.open("RES-1", LocalDate.of(2026, 8, 20), "Bahia Concha");
+        rescueCase.assignAnimal(animal);
+        rescueCase.changeStatus(RescueStatus.UNDER_EVALUATION);
+        rescueCase.changeStatus(RescueStatus.IN_REHABILITATION);
+        rescueCase.changeStatus(RescueStatus.READY_FOR_RELEASE);
+        rescueCase.changeStatus(RescueStatus.RELEASED);
+
+        when(animalRepository.findByAnimalCode("AN-1")).thenReturn(Optional.of(animal));
+
+        assertThat(service.canReceiveTreatment("AN-1")).isFalse();
+    }
+
+    @Test
+    void shouldThrowWhenCheckingEligibilityOfUnknownAnimal() {
+        when(animalRepository.findByAnimalCode("AN-999")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.canReceiveTreatment("AN-999"))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 }

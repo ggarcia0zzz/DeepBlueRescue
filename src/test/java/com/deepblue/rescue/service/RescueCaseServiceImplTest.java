@@ -19,6 +19,8 @@ import com.deepblue.rescue.repository.AnimalRepository;
 import com.deepblue.rescue.repository.RescueCaseRepository;
 import com.deepblue.rescue.repository.RescueCenterRepository;
 import com.deepblue.rescue.repository.TreatmentRepository;
+import com.deepblue.rescue.service.RescueCaseServiceImpl;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
